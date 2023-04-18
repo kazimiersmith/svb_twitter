@@ -16,12 +16,13 @@ elif drive == 'C:':
     root = Path('C:/Users/kas1112/Dropbox/sivb')
 else:
     # Macbook
-    root = Path('~/Dropbox/sivb')
+    root = Path('/Users/kazimiersmith/Dropbox/sivb')
 
 data = root / 'data'
 data_in = data / 'in'
 data_out = data / 'out'
 data_twitter = data_in / 'twitter'
+temp = data / 'temp'
 fig = root / 'fig'
 
 default_dpi = 300
@@ -34,20 +35,24 @@ bjzz = pd.read_stata(data_in / 'bjzz.dta')
 ctm = pd.read_stata(data_in / 'ctm.dta')
 price_minute = pd.read_stata(data_in / 'price_minute.dta')
 
+# Aggregate data
+resample_method = 'min'
 ctm_seconds_agg_methods = {'price': 'mean'}
-# Aggregate ctm data to second level
-ctm_seconds = ctm.set_index('tc').resample('S').agg(ctm_seconds_agg_methods).reset_index()
+ctm_seconds = ctm.set_index('tc').resample(resample_method).agg(ctm_seconds_agg_methods).reset_index()
 ctm_seconds = ctm_seconds.rename(columns = {'tc': 'time'})
 
 posts_seconds_agg_methods = {'id': 'count'}
-posts_seconds = posts.set_index('date').resample('S').agg(posts_seconds_agg_methods).reset_index()
+posts_seconds = posts.set_index('date').resample(resample_method).agg(posts_seconds_agg_methods).reset_index()
 posts_seconds = posts_seconds.rename(columns = {'date': 'time', 'id': 'num_posts'})
 
-# Make sure both time columns are in UTC format before merge
-posts_seconds['time'] = pd.to_datetime(posts_seconds['time'], utc = True)
-ctm_seconds['time'] = pd.to_datetime(ctm_seconds['time'], utc = True)
+# Convert Tweet times to New York time and then remove time zone information (we don't really need it)
+posts_seconds['time'] = posts_seconds['time'].dt.tz_convert('America/New_York')
+posts_seconds['time'] = posts_seconds['time'].dt.tz_localize(None)
 
-# Merge posts seconds and ctm_seconds, keeping only rows where both have data
-posts_ctm_seconds = pd.merge(posts_seconds, ctm_seconds, on = 'time', how = 'inner')
+# Merge posts seconds and ctm_seconds
+posts_ctm_seconds = pd.merge(posts_seconds, ctm_seconds, on = 'time', how = 'outer')
 
 posts_ctm_seconds.to_pickle(data_out / 'posts_ctm_seconds.pickle')
+
+# Write to CSV for debugging
+posts_ctm_seconds.to_csv(temp / 'posts_ctm_seconds.csv')
