@@ -2,6 +2,7 @@ import pandas as pd
 from pathlib import Path
 from datetime import datetime
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 
 pd.options.display.max_rows = 1000
 
@@ -26,32 +27,43 @@ fig = root / 'fig'
 
 default_dpi = 300
 
-posts_ctm_seconds = pd.read_pickle(data_out / 'posts_ctm_seconds.pickle')
+posts_ctm_agg = pd.read_pickle(data_out / 'posts_ctm_agg.pickle')
 
 # Note that trading was halted at 8:30am NY time on March 10th
-to_graph = posts_ctm_seconds[(posts_ctm_seconds['time'] >= datetime(2023, 3, 8, 12)) &
-                             (posts_ctm_seconds['time'] <= datetime(2023, 3, 8, 20))]
 
-# Plot price and number of posts over time, with price and number of posts on two separate y-axes
-figure, ax1 = plt.subplots()
+for i in range(7, 11):
+    to_graph = posts_ctm_agg[(posts_ctm_agg['time'] >= datetime(2023, 3, i)) &
+                                 (posts_ctm_agg['time'] <= datetime(2023, 3, i + 1))]
 
-color = 'tab:red'
-ax1.set_xlabel('Time')
-ax1.set_ylabel('Price', color = color)
-ax1.plot(to_graph['time'], to_graph['price'], color = color)
-ax1.tick_params(axis = 'y', labelcolor = color)
+    # Plot price and number of posts over time, with price and number of posts on two separate y-axes
+    figure, ax1 = plt.subplots()
 
-ax2 = ax1.twinx()
+    color = 'tab:red'
+    ax1.set_xlabel('Time')
+    ax1.set_ylabel('Price (minute level)', color = color)
+    ax1.plot(to_graph['time'], to_graph['price'], color = color)
+    ax1.tick_params(axis = 'y', labelcolor = color)
 
-color = 'tab:blue'
-ax2.set_ylabel('Number of posts', color = color)
-ax2.plot(to_graph['time'], to_graph['num_posts'], color = color)
-ax2.tick_params(axis = 'y', labelcolor = color)
+    # X axis tick labels every 2 hours, labeled with hour
+    ax1.xaxis.set_major_locator(mdates.HourLocator(interval = 2))
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
 
-figure.tight_layout()
+    # Rotate x axis tick labels
+    for tick in ax1.get_xticklabels():
+        tick.set_rotation(45)
 
-plt.savefig(fig / 'price_posts.png', dpi = default_dpi)
-plt.clf()
+    ax2 = ax1.twinx()
 
-# Write to CSV for debugging
-to_graph.to_csv(temp / 'to_graph.csv')
+    color = 'tab:blue'
+    ax2.set_ylabel('Cumulative # posts (minute level)', color = color)
+    ax2.plot(to_graph['time'], to_graph['cum_num_posts'], color = color)
+    ax2.tick_params(axis = 'y', labelcolor = color)
+
+    title = 'SIVB price and Twitter posts on March ' + str(i) + ' 2023'
+    ax2.set_title(title)
+
+    figure.tight_layout()
+    
+    fig_name = 'price_posts_' + str(i) + '.png'
+    plt.savefig(fig / fig_name, dpi = default_dpi)
+    plt.clf()
