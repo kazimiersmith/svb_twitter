@@ -27,13 +27,16 @@ fig = root / 'fig'
 
 default_dpi = 300
 
-posts_ctm_agg = pd.read_pickle(data_out / 'posts_ctm_agg.pickle')
+symbol = 'SBNY'
+
+posts_prices_filename = symbol + '_posts_prices.pickle'
+posts_prices = pd.read_pickle(data_out / posts_prices_filename)
 
 # Note that trading was halted at 8:30am NY time on March 10th
 
-for i in range(7, 11):
-    to_graph = posts_ctm_agg[(posts_ctm_agg['time'] >= datetime(2023, 3, i)) &
-                                 (posts_ctm_agg['time'] <= datetime(2023, 3, i + 1))]
+for i in range(1, 11):
+    to_graph = posts_prices[(posts_prices['time'] >= datetime(2023, 3, i)) &
+                                 (posts_prices['time'] < datetime(2023, 3, i + 1))]
 
     # Plot price and number of posts over time, with price and number of posts on two separate y-axes
     figure, ax1 = plt.subplots()
@@ -59,11 +62,11 @@ for i in range(7, 11):
     ax2.plot(to_graph['time'], to_graph['cum_num_posts'], color = color)
     ax2.tick_params(axis = 'y', labelcolor = color)
 
-    title = 'SIVB price and Twitter posts on March ' + str(i) + ' 2023'
+    title = symbol + ' price and Twitter posts on March ' + str(i) + ' 2023'
     ax2.set_title(title)
 
     figure.tight_layout()
     
-    fig_name = 'price_posts_' + str(i) + '.png'
+    fig_name = symbol + '_price_posts_' + str(i) + '.png'
     plt.savefig(fig / fig_name, dpi = default_dpi)
     plt.clf()
